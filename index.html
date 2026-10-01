@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Роль данных в ИИ — практикум 6 класс</title>
+<style>
+:root{
+  --bg:#060a12; --panel:#0d1524; --panel-2:#121e34; --line:#223656; --line-soft:#182640;
+  --ink:#e8f2ff; --muted:#93a8c6;
+  --cyan:#22d3ee; --cyan-deep:#0e7490; --violet:#8b7cf6;
+  --ok:#34d399; --bad:#fb7185; --warn:#fbbf24;
+  --glow:0 0 22px rgba(34,211,238,.28);
+}
+*{box-sizing:border-box;}
+html{ font-size:clamp(18px, calc(10px + .5vw + .5vh), 28px); height:100%; }
+body{
+  margin:0; height:100%; overflow:hidden; color:var(--ink);
+  font-family:'Bahnschrift','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  font-size:1rem; line-height:1.4; font-variant-numeric:tabular-nums;
+  background:
+    radial-gradient(60rem 36rem at 88% -8%, rgba(34,211,238,.13), transparent 60%),
+    radial-gradient(48rem 30rem at -6% 108%, rgba(139,124,246,.12), transparent 60%),
+    linear-gradient(rgba(120,170,255,.045) 1px, transparent 1px) 0 0/2.4rem 2.4rem,
+    linear-gradient(90deg, rgba(120,170,255,.045) 1px, transparent 1px) 0 0/2.4rem 2.4rem,
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+#app{height:100vh; height:100dvh; display:flex; flex-direction:column;}
+.screen{display:none; flex:1; min-height:0; flex-direction:column;}
+.screen.active{display:flex;}
+:focus-visible{outline:2px solid var(--cyan); outline-offset:3px;}
+
+/* ---------- кнопки ---------- */
+.btn{
+  border:none; padding:.7rem 1.6rem; font-size:1.05rem; font-weight:700;
+  font-family:inherit; cursor:pointer; letter-spacing:.01em;
+  clip-path:polygon(.55rem 0,100% 0,100% calc(100% - .55rem),calc(100% - .55rem) 100%,0 100%,0 .55rem);
+  transition:transform .12s, filter .2s, background .2s;
+}
+.btn:active:not(:disabled){transform:translateY(1px);}
+.btn-primary{ background:linear-gradient(135deg,#22d3ee,#0ea5c6); color:#03141c; }
+.btn-primary:hover:not(:disabled){filter:brightness(1.12) drop-shadow(0 0 .5rem rgba(34,211,238,.5));}
+.btn-primary:disabled{background:#1a2840; color:#5d7396; cursor:not-allowed;}
+.btn-ghost{ background:#16243d; color:var(--ink); box-shadow:inset 0 0 0 2px var(--line); }
+.btn-ghost:hover:not(:disabled){background:#1b2d4c;}
+.btn-ghost:disabled{opacity:.35; cursor:not-allowed;}
+.hidden{display:none !important;}
+
+/* ---------- верхняя панель ---------- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:.55rem 1.5rem; background:rgba(9,15,28,.86);
+  border-bottom:1px solid var(--line);
+}
+.topbar-title{font-weight:700; font-size:1.1rem; color:var(--ink); display:flex; align-items:center; gap:.7rem;}
+.topbar-title::before{content:''; width:.8rem; height:.8rem; background:var(--cyan); box-shadow:var(--glow); transform:rotate(45deg);}
+.topbar-right{display:flex; align-items:center; gap:1rem; font-size:1rem; font-weight:700; color:var(--muted);}
+.pill{background:rgba(34,211,238,.12); color:var(--cyan); padding:.2rem .9rem; border-radius:.3rem; font-size:.9rem; font-weight:700; border:1px solid rgba(34,211,238,.35);}
+.pill.b{background:rgba(139,124,246,.14); color:#b9aeff; border-color:rgba(139,124,246,.45);}
+
+/* ---------- навигация по заданиям ---------- */
+.task-nav{
+  display:flex; gap:.25rem; padding:.45rem 1.5rem; align-items:center;
+  background:rgba(9,15,28,.7); border-bottom:1px solid var(--line-soft);
+}
+.task-nav-label{display:none;}
+.task-nav-btn{
+  flex:1 1 0; min-width:0; height:2rem; border-radius:.25rem;
+  border:1px solid var(--line); background:#101b30;
+  color:var(--muted); font-weight:700; font-size:.82rem;
+  cursor:pointer; transition:.15s; font-family:inherit; padding:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.task-nav-btn:hover{border-color:var(--cyan); color:var(--cyan);}
+.task-nav-btn.current{background:var(--cyan); color:#03141c; border-color:var(--cyan); box-shadow:var(--glow);}
+.task-nav-btn.done{border-color:rgba(52,211,153,.7); color:var(--ok); background:rgba(52,211,153,.1);}
+.task-nav-btn.done.current{background:var(--cyan); color:#03141c; border-color:var(--cyan);}
+.task-nav-btn.stage2{border-style:dashed;}
+
+.progress{height:4px; background:#14213a; flex:none;}
+.progress > div{
+  height:100%; width:0; background:linear-gradient(90deg,var(--violet),var(--cyan));
+  box-shadow:0 0 14px rgba(34,211,238,.7); transition:width .35s ease;
+}
+.stage{flex:1; min-height:0; overflow-y:auto; padding:1.1rem 1.5rem 1.4rem; scrollbar-color:#2a4268 transparent;}
+
+.navbar{
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:.7rem 1.5rem; background:rgba(9,15,28,.92);
+  border-top:1px solid var(--line); flex:none;
+}
+.nav-right{display:flex; gap:.9rem; margin-left:auto;}
+
+/* ---------- вход ---------- */
+.auth-wrap{flex:1; display:flex; align-items:center; justify-content:center; padding:1.5rem;}
+.auth-card{
+  position:relative; width:min(38rem,92vw); background:var(--panel);
+  padding:2.2rem 2.6rem 2rem; text-align:center;
+  border:1px solid var(--line); box-shadow:0 0 0 1px rgba(34,211,238,.06), 0 30px 80px rgba(0,0,0,.55), 0 0 60px rgba(34,211,238,.08);
+}
+.auth-card::before,.task-card::before,.result-card::before{
+  content:''; position:absolute; top:-1px; left:-1px; width:1.6rem; height:1.6rem;
+  border-top:3px solid var(--cyan); border-left:3px solid var(--cyan); pointer-events:none;
+}
+.auth-card::after,.task-card::after,.result-card::after{
+  content:''; position:absolute; bottom:-1px; right:-1px; width:1.6rem; height:1.6rem;
+  border-bottom:3px solid var(--cyan); border-right:3px solid var(--cyan); pointer-events:none;
+}
+.auth-badge{
+  display:inline-block; background:rgba(34,211,238,.1); color:var(--cyan);
+  font-size:.95rem; font-weight:700; padding:.3rem 1rem; border:1px solid rgba(34,211,238,.35); border-radius:.3rem;
+}
+.auth-card h1{font-size:2rem; line-height:1.2; margin:1rem 0 .7rem; color:var(--ink); letter-spacing:.005em;}
+.auth-card .sub{font-size:1.1rem; line-height:1.5; color:var(--muted); margin:0 0 1.5rem;}
+.auth-card label{display:block; text-align:left; font-weight:700; font-size:1.05rem; margin-bottom:.5rem;}
+#nameInput{
+  width:100%; padding:.8rem 1rem; font-size:1.3rem; font-family:inherit;
+  border-radius:.4rem; border:2px solid var(--cyan); outline:none;
+  background:#08111f; color:var(--ink); font-weight:700;
+  box-shadow:0 0 0 4px rgba(34,211,238,.16);
+  transition:box-shadow .2s;
+}
+#nameInput:focus{box-shadow:0 0 0 6px rgba(34,211,238,.28), var(--glow);}
+.hint{font-size:.95rem; color:var(--muted); margin:.6rem 0 1.2rem; text-align:left; min-height:1.3rem;}
+.auth-meta{margin-top:1.1rem; font-size:.9rem; color:var(--muted);}
+
+/* ---------- карточка задания ---------- */
+.task-card{
+  position:relative; max-width:min(72rem,100%); margin:0 auto;
+  background:var(--panel); border:1px solid var(--line);
+  padding:1.4rem 1.8rem 1.6rem; box-shadow:0 24px 60px rgba(0,0,0,.4);
+}
+.task-num-badge{
+  display:inline-block; background:rgba(139,124,246,.14); color:#b9aeff;
+  font-size:.95rem; font-weight:700; padding:.2rem .8rem;
+  border:1px solid rgba(139,124,246,.4); border-radius:.3rem; margin-bottom:.6rem;
+}
+.task-title{font-size:1.65rem; font-weight:700; color:var(--ink); margin:0 0 .4rem; line-height:1.25;}
+.task-desc{font-size:1.05rem; color:var(--muted); margin:0 0 1.2rem; font-weight:500;}
+
+.tf-statement{
+  font-size:1.5rem; font-weight:700; line-height:1.45;
+  margin:.5rem 0 1.5rem; padding:1.2rem 1.4rem; background:#0a1220;
+  border:1px solid var(--line); border-left:4px solid var(--cyan);
+}
+.tf-btns{display:flex; gap:1rem; justify-content:center;}
+.tf-opt{
+  font-family:inherit; font-size:1.3rem; font-weight:700; cursor:pointer;
+  border:2px solid var(--line); background:#101b30; color:var(--muted);
+  border-radius:.4rem; padding:.8rem 3rem; transition:.15s; min-width:11rem;
+}
+.tf-opt:hover:not(:disabled){border-color:var(--cyan); color:var(--ink);}
+.tf-opt.selected[data-v="true"]{background:rgba(52,211,153,.14); border-color:var(--ok); color:var(--ok);}
+.tf-opt.selected[data-v="false"]{background:rgba(251,113,133,.14); border-color:var(--bad); color:var(--bad);}
+
+/* ---------- соответствия ---------- */
+.match-grid{display:grid; grid-template-columns:1fr 1.3fr; gap:1.4rem;}
+.match-col{display:flex; flex-direction:column; gap:.7rem;}
+.match-head{font-size:1rem; color:var(--cyan); font-weight:700; padding-bottom:.3rem; border-bottom:1px solid var(--line);}
+.match-item{
+  display:flex; align-items:center; gap:.8rem; background:#101b30;
+  border:2px solid var(--line); border-radius:.4rem; padding:.85rem 1.1rem;
+  font-size:1.2rem; font-weight:600; line-height:1.35; cursor:pointer;
+  user-select:none; transition:.15s;
+}
+.match-item:hover{border-color:var(--cyan);}
+.match-item.selected{border-color:var(--cyan) !important; box-shadow:0 0 0 4px rgba(34,211,238,.2), var(--glow);}
+.pair-badge{
+  margin-left:auto; flex:none; min-width:1.7rem; height:1.7rem; border-radius:.3rem;
+  color:#03141c; font-size:1rem; font-weight:800;
+  display:flex; align-items:center; justify-content:center;
+}
+.tip{font-size:.95rem; color:var(--muted); margin:.9rem 0 0; text-align:center;}
+
+/* ---------- один ответ ---------- */
+.mc-question{font-size:1.55rem; font-weight:700; line-height:1.4; margin:.3rem 0 1.2rem;}
+.mc-options{display:grid; gap:.8rem;}
+.mc-option{
+  background:#101b30; border:2px solid var(--line); border-radius:.4rem;
+  padding:.9rem 1.2rem; font-size:1.25rem; font-weight:500; cursor:pointer;
+  transition:.15s; display:flex; align-items:center; gap:.9rem;
+}
+.mc-option::before{
+  content:''; flex:none; width:1.2rem; height:1.2rem; border-radius:50%;
+  border:2px solid #4a6490; background:transparent; transition:.15s;
+}
+.mc-option:hover{border-color:var(--cyan); background:#14223b;}
+.mc-option.selected{border-color:var(--cyan); background:rgba(34,211,238,.1); font-weight:700;}
+.mc-option.selected::before{border-color:var(--cyan); background:var(--cyan); box-shadow:inset 0 0 0 3px #0d1524, var(--glow);}
+
+/* ---------- сортировка ---------- */
+.sort-zones{display:grid; grid-template-columns:1fr 1fr; gap:1.1rem;}
+.sort-zone{
+  background:#0a1220; border:2px dashed #2f4a74; border-radius:.5rem;
+  padding:.9rem 1rem; min-height:11rem; transition:.15s; cursor:pointer;
+}
+.sort-zone.over{border-color:var(--cyan); background:rgba(34,211,238,.08);}
+.sort-zone h4{margin:0 0 .7rem; font-size:1.15rem; color:var(--cyan); font-weight:700;}
+.zone-items{display:flex; flex-direction:column; gap:.55rem;}
+.pool-block{margin-top:1.2rem;}
+.pool-title{font-size:1rem; color:var(--muted); font-weight:700; margin-bottom:.5rem;}
+.sort-pool{
+  display:flex; flex-wrap:wrap; gap:.65rem; min-height:3.6rem; padding:.8rem;
+  border:2px dashed var(--line); border-radius:.5rem; background:#0a1220; cursor:pointer;
+}
+.sort-pool.over{border-color:var(--cyan); background:rgba(34,211,238,.08);}
+.sort-item{
+  background:#14223b; border:2px solid var(--line); border-radius:.4rem;
+  padding:.6rem 1rem; font-size:1.1rem; font-weight:600;
+  cursor:grab; user-select:none; transition:.15s;
+}
+.sort-item:hover{border-color:var(--cyan);}
+.sort-item.selected{border-color:var(--cyan); box-shadow:0 0 0 3px rgba(34,211,238,.22), var(--glow);}
+.sort-item.dragging{opacity:.45;}
+
+/* ---------- датасет ---------- */
+.ds-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; max-width:48rem; margin:0 auto;}
+.ds-card{
+  background:#101b30; border:2px solid var(--line); border-radius:.5rem;
+  padding:.8rem; cursor:pointer; position:relative; user-select:none;
+  transition:.15s; display:flex; align-items:center; justify-content:center; min-height:6.6rem;
+}
+.ds-card:hover{transform:translateY(-2px); border-color:var(--cyan);}
+.ds-card.selected{border-color:var(--bad); background:rgba(251,113,133,.14);}
+.ds-card.selected::after{content:'✕'; position:absolute; top:.25rem; right:.55rem; color:var(--bad); font-size:1.4rem; font-weight:900;}
+.ds-card svg{display:block; width:4.6rem; height:4.6rem;}
+
+/* ---------- пропуски ---------- */
+.cloze{
+  background:#0a1220; border:1px solid var(--line); border-left:4px solid var(--cyan);
+  padding:1.3rem 1.5rem; font-size:1.4rem; line-height:2.3; font-weight:500;
+}
+.blank{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:8rem; height:2.4rem; padding:0 .9rem; margin:0 .3rem;
+  border-bottom:3px solid var(--cyan); border-radius:.3rem .3rem 0 0;
+  background:rgba(34,211,238,.1); color:var(--cyan); font-weight:700; font-size:1.2rem;
+  cursor:pointer; vertical-align:middle; transition:.15s;
+}
+.blank:hover{background:rgba(34,211,238,.2);}
+.blank.over{background:rgba(34,211,238,.32);}
+.blank.filled{border-bottom-color:var(--ok); background:rgba(52,211,153,.12); color:var(--ok);}
+.words{display:flex; flex-wrap:wrap; gap:.8rem; justify-content:center; margin-top:1.3rem;}
+.word{
+  background:#14223b; border:2px solid var(--line); border-radius:.4rem;
+  padding:.6rem 1.2rem; font-size:1.2rem; font-weight:700; cursor:grab;
+  user-select:none; transition:.15s;
+}
+.word:hover{border-color:var(--cyan);}
+.word.selected{border-color:var(--cyan); box-shadow:0 0 0 3px rgba(34,211,238,.22), var(--glow);}
+.word.used{opacity:.25; pointer-events:none;}
+.word.dragging{opacity:.45;}
+
+/* ---------- проверка ---------- */
+.feedback{display:none; margin-top:1.3rem; border-radius:.4rem; padding:.9rem 1.2rem; font-size:1.15rem; font-weight:600; line-height:1.45;}
+.feedback.show{display:block;}
+.feedback.good{background:rgba(52,211,153,.12); color:#7ff0c2; border:2px solid rgba(52,211,153,.55);}
+.feedback.part{background:rgba(251,191,36,.1); color:#fcd679; border:2px solid rgba(251,191,36,.5);}
+.feedback.bad{background:rgba(251,113,133,.12); color:#ffa3b1; border:2px solid rgba(251,113,133,.55);}
+
+.correct-mark{border-color:var(--ok) !important; background:rgba(52,211,153,.14) !important;}
+.wrong-mark{border-color:var(--bad) !important; background:rgba(251,113,133,.14) !important;}
+
+/* ---------- итог ---------- */
+.result-wrap{flex:1; overflow-y:auto; display:flex; align-items:center; justify-content:center; padding:1.4rem;}
+.result-card{
+  position:relative; width:min(46rem,94vw); background:var(--panel); border:1px solid var(--line);
+  padding:1.8rem 2.4rem; text-align:center; box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 60px rgba(34,211,238,.08);
+}
+.result-badge{font-size:3.4rem; line-height:1;}
+.result-card h1{font-size:1.7rem; color:var(--ink); margin:.6rem 0 .3rem;}
+.result-name{font-size:1.1rem; color:var(--muted); margin:.5rem 0 1rem; background:#0a1220; border:1px solid var(--line); padding:.6rem 1.2rem; display:inline-block;}
+.result-name b{color:var(--cyan); font-weight:700; font-size:1.3rem;}
+.result-score{font-size:4rem; font-weight:700; color:var(--cyan); line-height:1; text-shadow:0 0 28px rgba(34,211,238,.45);}
+.result-score small{font-size:1.1rem; color:var(--muted); font-weight:500; text-shadow:none;}
+.result-grade{display:inline-block; margin-top:.9rem; padding:.45rem 1.3rem; border-radius:.3rem; font-weight:700; font-size:1.15rem;}
+.result-grade.excellent{background:rgba(52,211,153,.14); color:var(--ok); border:1px solid rgba(52,211,153,.5);}
+.result-grade.good{background:rgba(34,211,238,.12); color:var(--cyan); border:1px solid rgba(34,211,238,.45);}
+.result-grade.ok{background:rgba(251,191,36,.12); color:var(--warn); border:1px solid rgba(251,191,36,.45);}
+.result-grade.low{background:rgba(251,113,133,.12); color:var(--bad); border:1px solid rgba(251,113,133,.45);}
+.result-desc{font-size:1.1rem; line-height:1.5; margin:.9rem auto 0; max-width:36rem; color:var(--ink);}
+.result-breakdown{margin:1.2rem auto 0; max-width:36rem; text-align:left; border-top:1px solid var(--line); padding-top:.8rem;}
+.bd-row{display:flex; justify-content:space-between; gap:1rem; font-size:1rem; padding:.3rem 0; color:var(--muted);}
+.bd-row b{color:var(--ink); white-space:nowrap;}
+.result-actions{display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin-top:1.4rem;}
+
+@media (max-width:1000px){
+  .match-grid,.sort-zones{grid-template-columns:1fr;}
+  .ds-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <section id="screen-auth" class="screen active">
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-badge">6 класс · Информатика и ИИ</div>
+        <h1>Практикум: роль данных в ИИ</h1>
+        <p class="sub">30 заданий по теме «Данные, информация, знания и их роль в обучении моделей ИИ». ~25 минут.</p>
+        <label for="nameInput">Введи своё имя</label>
+        <input id="nameInput" type="text" autocomplete="off" maxlength="40">
+        <div class="hint" id="nameHint">Поле подсвечено зелёным — введи имя, чтобы начать</div>
+        <button id="startBtn" class="btn btn-primary" disabled>Начать практическую работу</button>
+        <div class="auth-meta">Этап 1 — базовый (8 баллов) · Этап 2 — продвинутый (+2 балла)</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-task" class="screen">
+    <header class="topbar">
+      <div class="topbar-title">Практикум: данные для обучения моделей ИИ</div>
+      <div class="topbar-right">
+        <span class="pill" id="stagePill">Этап 1 · базовый</span>
+        <span id="taskCounter">Задание 1 из 30</span>
+      </div>
+    </header>
+    <div class="task-nav" id="taskNav"><span class="task-nav-label">Задания:</span></div>
+    <div class="progress"><div id="taskProgress"></div></div>
+    <div class="stage" id="taskStage"></div>
+    <footer class="navbar">
+      <button id="prevBtn" class="btn btn-ghost">← Назад</button>
+      <div class="nav-right">
+        <button id="checkBtn" class="btn btn-primary">Проверить</button>
+        <button id="nextBtn" class="btn btn-primary" disabled>Далее →</button>
+      </div>
+    </footer>
+  </section>
+
+  <section id="screen-result" class="screen">
+    <div class="result-wrap">
+      <div class="result-card">
+        <div class="result-badge" id="resultBadge">🏆</div>
+        <h1>Итоговая карточка результатов</h1>
+        <div class="result-name" id="resultName">Ученик</div>
+        <div class="result-score"><span id="resultScore">0</span> <small>из 10 баллов</small></div>
+        <div class="result-grade" id="resultGrade">—</div>
+        <div class="result-desc" id="resultDesc"></div>
+        <div class="result-breakdown" id="resultBreakdown"></div>
+        <div class="result-actions">
+          <button class="btn btn-primary" id="retryBtn">Пройти заново</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+
+const $  = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+function shuffle(a){
+  const x = a.slice();
+  for (let i = x.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [x[i], x[j]] = [x[j], x[i]];
+  }
+  return x;
+}
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function fmt(n){
+  const r = Math.round(n * 10) / 10;
+  return r.toString().replace('.', ',');
+}
+
+const APPLE_SVG = '<svg viewBox="0 0 60 60" width="56" height="56" aria-hidden="true"><circle cx="30" cy="36" r="18" fill="#e74c3c"/><circle cx="23" cy="30" r="6" fill="#ff8b7d" opacity="0.5"/><rect x="29" y="8" width="2" height="11" rx="1" fill="#7a4a2b"/><ellipse cx="36" cy="13" rx="6" ry="3.5" fill="#27ae60"/></svg>';
+const PEAR_SVG  = '<svg viewBox="0 0 60 60" width="56" height="56" aria-hidden="true"><ellipse cx="30" cy="20" rx="9" ry="11" fill="#8bc34a"/><ellipse cx="30" cy="40" rx="15" ry="13" fill="#8bc34a"/><circle cx="25" cy="34" r="4.5" fill="#aed581" opacity="0.6"/><rect x="29" y="5" width="2" height="9" rx="1" fill="#5d4037"/><ellipse cx="35" cy="10" rx="4.5" ry="2.5" fill="#4caf50"/></svg>';
+const CAT_SVG   = '<svg viewBox="0 0 60 60" width="56" height="56" aria-hidden="true"><circle cx="30" cy="33" r="17" fill="#8b6f47"/><path d="M19 19 L14 8 L25 15 Z" fill="#8b6f47"/><path d="M41 19 L46 8 L35 15 Z" fill="#8b6f47"/><circle cx="24" cy="31" r="2.3" fill="#1d2b36"/><circle cx="36" cy="31" r="2.3" fill="#1d2b36"/><circle cx="30" cy="38" r="1.8" fill="#ff8b7d"/></svg>';
+const DOG_SVG   = '<svg viewBox="0 0 60 60" width="56" height="56" aria-hidden="true"><ellipse cx="30" cy="33" rx="17" ry="15" fill="#c19a6b"/><ellipse cx="14" cy="24" rx="5.5" ry="9" fill="#8b6f47"/><ellipse cx="46" cy="24" rx="5.5" ry="9" fill="#8b6f47"/><circle cx="24" cy="31" r="2.3" fill="#1d2b36"/><circle cx="36" cy="31" r="2.3" fill="#1d2b36"/><ellipse cx="30" cy="40" rx="3" ry="2" fill="#1d2b36"/></svg>';
+const ENV_SVG   = '<svg viewBox="0 0 60 60" width="56" height="56" aria-hidden="true"><rect x="8" y="22" width="44" height="28" rx="3" fill="#fff" stroke="#2f74c0" stroke-width="2"/><path d="M8 22 L30 8 L52 22" fill="none" stroke="#2f74c0" stroke-width="2"/><rect x="26" y="32" width="8" height="18" fill="#2f74c0"/></svg>';
+
+const TF_TASKS = [
+  { text:'Искусственный интеллект учится на данных.', answer:true,
+    expl:'Верно: данные — основа обучения моделей ИИ.' },
+  { text:'Число «36,6» без контекста — это информация.', answer:false,
+    expl:'Неверно: без контекста «36,6» — это просто данные, а не информация.' },
+  { text:'Датасет — это набор данных для обучения ИИ.', answer:true,
+    expl:'Верно: датасет — это обучающая выборка для модели.' },
+  { text:'Чтобы ИИ научился распознавать кошек, ему достаточно одной фотографии.', answer:false,
+    expl:'Неверно: одной фотографии мало, нужен большой датасет.' },
+  { text:'Данные — это отдельные факты и числа без контекста.', answer:true,
+    expl:'Верно: данные — это «сырьё», они не имеют смысла сами по себе.' },
+  { text:'Размеченные данные — это примеры с правильным ответом (меткой).', answer:true,
+    expl:'Верно: метка — это «подсказка учителя» для модели.' },
+  { text:'Чем больше качественных данных, тем точнее модель ИИ.', answer:true,
+    expl:'Верно: объём и качество данных улучшают модель.' },
+  { text:'Если в датасете много ошибок, модель ИИ будет работать отлично.', answer:false,
+    expl:'Неверно: мусор на входе — мусор на выходе.' }
+];
+
+const MATCH_TASKS = [
+  { head:[ 'Понятие', 'Пример' ],
+    pairs:[
+      { l:'Данные',      r:'«15, 20, 30»' },
+      { l:'Информация',  r:'«Температура воздуха 15 °C»' },
+      { l:'Знания',      r:'«Одеться тепло, ведь на улице 15 °C»' }
+    ] },
+  { head:[ 'Термин', 'Определение' ],
+    pairs:[
+      { l:'Данные',      r:'Факты и числа без контекста' },
+      { l:'Информация',  r:'Данные, понятые в контексте' },
+      { l:'Знания',      r:'Умение применять информацию' }
+    ] },
+  { head:[ 'Тип данных', 'Пример' ],
+    pairs:[
+      { l:'Размеченные данные',   r:'Фото кошки + подпись «кошка»' },
+      { l:'Неразмеченные данные', r:'Фото животных без подписей' },
+      { l:'Датасет',              r:'Набор из 1000 таких примеров' }
+    ] },
+  { head:[ 'Задача ИИ', 'Какие данные нужны' ],
+    pairs:[
+      { l:'Распознавание кошек',  r:'Фото кошек и собак с подписями' },
+      { l:'Распознавание речи',   r:'Аудиозаписи и их тексты' },
+      { l:'Перевод текста',       r:'Пары предложений на двух языках' }
+    ] },
+  { head:[ 'Понятие', 'Что это такое' ],
+    pairs:[
+      { l:'Датасет',  r:'Набор примеров для обучения' },
+      { l:'Разметка', r:'Правильные ответы к примерам' },
+      { l:'Модель',   r:'Программа, которая учится на данных' }
+    ] },
+  { head:[ 'Пример', 'Категория' ],
+    pairs:[
+      { l:'«36,6» — просто число в тетради',        r:'Данные' },
+      { l:'«Температура ученика 36,6 °C»',          r:'Информация' },
+      { l:'«36,6 °C — это норма, человек здоров»',  r:'Знания' }
+    ] }
+];
+
+const MC_TASKS = [
+  { q:'Что такое данные?',
+    options:['Отдельные факты и числа без контекста','Готовое знание, которое можно применить','Программа для компьютера','Готовый ответ ИИ'],
+    correct:0 },
+  { q:'Что такое информация?',
+    options:['Случайный набор чисел','Данные, понятые в контексте','Файл на компьютере','Набор пикселей'],
+    correct:1 },
+  { q:'Что такое датасет?',
+    options:['Веб-сайт','Набор примеров для обучения модели ИИ','Электронный учебник','Компьютерная игра'],
+    correct:1 },
+  { q:'Что такое размеченные данные?',
+    options:['Данные с правильным ответом (меткой)','Данные без ответов','Данные, раскрашенные в цвета','Ошибочные данные'],
+    correct:0 },
+  { q:'Зачем ИИ нужны данные?',
+    options:['Чтобы развлечь пользователя','Чтобы учиться на примерах и находить закономерности','Чтобы заполнить память компьютера','Чтобы ускорить интернет'],
+    correct:1 },
+  { q:'Что произойдёт, если в датасете много ошибок?',
+    options:['Модель будет работать лучше','Ничего не изменится','Модель будет ошибаться','Модель станет быстрее'],
+    correct:2 }
+];
+
+const SORT_TASKS = [
+  { items:[
+      { text:'Фото кошки с подписью «кошка»', cat:'labeled' },
+      { text:'1000 фото животных без подписей', cat:'unlabeled' },
+      { text:'Аудио «Привет» + текст «Привет»', cat:'labeled' },
+      { text:'Снимки улиц без отмеченных объектов', cat:'unlabeled' }
+    ] },
+  { items:[
+      { text:'Письма с метками «спам» / «не спам»', cat:'labeled' },
+      { text:'Набор случайных чисел без пояснений', cat:'unlabeled' },
+      { text:'Фото яблок с подписью «яблоко»', cat:'labeled' },
+      { text:'Записи звуков леса без описания', cat:'unlabeled' }
+    ] },
+  { items:[
+      { text:'Фото с подписью «собака»', cat:'labeled' },
+      { text:'Картинки без подписей', cat:'unlabeled' },
+      { text:'Медицинские снимки с диагнозом врача', cat:'labeled' },
+      { text:'Видео с камер наблюдения без разметки', cat:'unlabeled' }
+    ] },
+  { items:[
+      { text:'Голосовые записи с текстовой расшифровкой', cat:'labeled' },
+      { text:'Фото разных домов без названий', cat:'unlabeled' },
+      { text:'Фото животных с породой на этикетке', cat:'labeled' },
+      { text:'Аудио без транскрипции', cat:'unlabeled' }
+    ] }
+];
+
+const DS_TASKS = [
+  { task:'Датасет для распознавания яблок. Найди и отметь лишние объекты.',
+    items:[
+      { svg:APPLE_SVG, bad:false },
+      { svg:APPLE_SVG, bad:false },
+      { svg:PEAR_SVG,  bad:true  },
+      { svg:APPLE_SVG, bad:false },
+      { svg:APPLE_SVG, bad:false },
+      { svg:PEAR_SVG,  bad:true  },
+      { svg:APPLE_SVG, bad:false },
+      { svg:APPLE_SVG, bad:false }
+    ] },
+  { task:'Датасет для распознавания кошек. Найди и отметь лишние объекты.',
+    items:[
+      { svg:CAT_SVG, bad:false },
+      { svg:DOG_SVG, bad:true  },
+      { svg:CAT_SVG, bad:false },
+      { svg:CAT_SVG, bad:false },
+      { svg:DOG_SVG, bad:true  },
+      { svg:CAT_SVG, bad:false },
+      { svg:CAT_SVG, bad:false },
+      { svg:CAT_SVG, bad:false }
+    ] },
+  { task:'Датасет для распознавания домов. Найди и отметь лишние объекты.',
+    items:[
+      { svg:ENV_SVG, bad:false },
+      { svg:ENV_SVG, bad:false },
+      { svg:DOG_SVG, bad:true  },
+      { svg:ENV_SVG, bad:false },
+      { svg:CAT_SVG, bad:true  },
+      { svg:ENV_SVG, bad:false },
+      { svg:ENV_SVG, bad:false },
+      { svg:ENV_SVG, bad:false }
+    ] }
+];
+
+const CLOZE_TASKS = [
+  { parts:[
+      { t:'Чтобы модель ИИ научилась распознавать объекты, ей нужен ' },
+      { gap:'g1', answer:'датасет' },
+      { t:' — большой набор примеров. Чем больше качественных данных, тем выше ' },
+      { gap:'g2', answer:'точность' },
+      { t:' модели.' }
+    ],
+    words:['датасет','точность','обучение','знание','разметка'] },
+  { parts:[
+      { t:'Данные без контекста — это ' },
+      { gap:'g1', answer:'данные' },
+      { t:'. Данные, понятые в контексте, — это ' },
+      { gap:'g2', answer:'информация' },
+      { t:'. А умение применять их на практике — это ' },
+      { gap:'g3', answer:'знания' },
+      { t:'.' }
+    ],
+    words:['данные','информация','знания','датасет','модель'] },
+  { parts:[
+      { t:'Примеры с правильными ответами (метками) называются ' },
+      { gap:'g1', answer:'размеченными' },
+      { t:' данными. Процесс, во время которого модель учится на примерах, называется ' },
+      { gap:'g2', answer:'обучением' },
+      { t:'.' }
+    ],
+    words:['размеченными','обучением','неразмеченными','данными','моделью'] }
+];
+
+const TASKS = [];
+let _id = 0;
+TF_TASKS.forEach(t => TASKS.push({ id:++_id, stage:1, max:0.4, type:'tf',     title:'Верно или неверно',             data:t }));
+MATCH_TASKS.forEach(t => TASKS.push({ id:++_id, stage:1, max:0.4, type:'match', title:'Установи соответствие',          data:t }));
+MC_TASKS.forEach(t => TASKS.push({ id:++_id, stage:1, max:0.4, type:'mc',    title:'Выбери один правильный ответ',    data:t }));
+SORT_TASKS.forEach(t => TASKS.push({ id:++_id, stage:2, max:0.2, type:'sort', title:'Распредели по категориям',        data:t }));
+DS_TASKS.forEach(t => TASKS.push({ id:++_id, stage:2, max:0.2, type:'dataset', title:'Найди ошибку в датасете',       data:t }));
+CLOZE_TASKS.forEach(t => TASKS.push({ id:++_id, stage:2, max:0.2, type:'cloze', title:'Заполни пропуски',              data:t }));
+
+const app = { name:'', step:0, scores:{}, answers:{}, checked:{} };
+
+/* ============ TF ============ */
+function buildTF(task){
+  const d = task.data;
+  const key = 'tf_' + task.id;
+  let user = app.answers[key] !== undefined ? app.answers[key] : null;
+  let locked = app.checked[task.id] || false;
+
+  function buildHtml(){
+    return '<div class="task-card">' +
+      '<div class="task-num-badge">Задание ' + task.id + '</div>' +
+      '<h2 class="task-title">' + task.title + '</h2>' +
+      '<p class="task-desc">Прочитай утверждение и выбери: верно оно или неверно.</p>' +
+      '<div class="tf-statement">' + d.text + '</div>' +
+      '<div class="tf-btns">' +
+        '<button type="button" class="tf-opt" data-v="true">Верно</button>' +
+        '<button type="button" class="tf-opt" data-v="false">Неверно</button>' +
+      '</div>' +
+    '</div>';
+  }
+  function paint(){
+    $$('.tf-opt').forEach(b => {
+      const v = (b.dataset.v === 'true');
+      b.classList.toggle('selected', user === v);
+    });
+  }
+  return {
+    html: buildHtml(),
+    mount: function(root){
+      paint();
+      if (locked){
+        $$('.tf-opt', root).forEach(b => {
+          b.disabled = true;
+          const v = (b.dataset.v === 'true');
+          if (v === d.answer) b.classList.add('correct-mark');
+          else if (v === user) b.classList.add('wrong-mark');
+        });
+        return;
+      }
+      $$('.tf-opt', root).forEach(b => {
+        b.addEventListener('click', () => {
+          user = (b.dataset.v === 'true');
+          app.answers[key] = user;
+          paint();
+          refreshCheckState();
+        });
+      });
+    },
+    canCheck: () => user !== null,
+    check: function(){
+      locked = true;
+      const ok = (user === d.answer);
+      const earned = ok ? task.max : 0;
+      $$('.tf-opt').forEach(b => {
+        const v = (b.dataset.v === 'true');
+        b.disabled = true;
+        if (v === d.answer) b.classList.add('correct-mark');
+        else if (v === user) b.classList.add('wrong-mark');
+      });
+      return { earned, text: (ok ? '✅ ' : '❌ ') + d.expl };
+    }
+  };
+}
+
+/* ============ MATCH ============ */
+const PAIR_COLORS = ['#22d3ee', '#a78bfa', '#fbbf24'];
+const PAIR_LIGHT  = ['rgba(34,211,238,.14)', 'rgba(167,139,250,.16)', 'rgba(251,191,36,.13)'];
+function buildMatch(task){
+  const d = task.data;
+  const key = 'match_' + task.id;
+  let pairs = app.answers[key] ? Object.assign({}, app.answers[key]) : {};
+  let selected = null;
+  let locked = app.checked[task.id] || false;
+
+  const leftItems  = d.pairs.map((p, i) => ({ id:'L' + i, text:p.l }));
+  const rightItems = shuffle(d.pairs.map((p, i) => ({ id:'R' + i, text:p.r, correct:'L' + i })));
+
+  function buildHtml(){
+    const leftHtml = leftItems.map(l =>
+      '<div class="match-item" data-side="left" data-id="' + l.id + '"><span>' + l.text + '</span></div>'
+    ).join('');
+    const rightHtml = rightItems.map(r =>
+      '<div class="match-item" data-side="right" data-id="' + r.id + '"><span>' + r.text + '</span></div>'
+    ).join('');
+    return '<div class="task-card">' +
+      '<div class="task-num-badge">Задание ' + task.id + '</div>' +
+      '<h2 class="task-title">' + task.title + '</h2>' +
+      '<p class="task-desc">Нажми на элемент слева, затем на подходящий справа. Повторное нажатие снимает связь.</p>' +
+      '<div class="match-grid">' +
+        '<div class="match-col"><div class="match-head">' + d.head[0] + '</div>' + leftHtml + '</div>' +
+        '<div class="match-col"><div class="match-head">' + d.head[1] + '</div>' + rightHtml + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function paint(root){
+    $$('.match-item', root).forEach(el => {
+      el.classList.remove('matched', 'selected');
+      el.style.borderColor = '';
+      el.style.background = '';
+      const b = el.querySelector('.pair-badge');
+      if (b) b.remove();
+    });
+    const keys = Object.keys(pairs);
+    keys.forEach((lid, i) => {
+      const rid = pairs[lid];
+      const color = PAIR_COLORS[i % PAIR_COLORS.length];
+      const bg = PAIR_LIGHT[i % PAIR_LIGHT.length];
+      const num = i + 1;
+      [[lid, 'left'], [rid, 'right']].forEach(pair => {
+        const el = root.querySelector('.match-item[data-side="' + pair[1] + '"][data-id="' + pair[0] + '"]');
+        if (!el) return;
+        el.classList.add('matched');
+        el.style.borderColor = color;
+        el.style.background = bg;
+        const badge = document.createElement('span');
+        badge.className = 'pair-badge';
+        badge.textContent = num;
+        badge.style.background = color;
+        el.appendChild(badge);
+      });
+    });
+    if (selected){
+      const el = root.querySelector('.match-item[data-side="left"][data-id="' + selected + '"]');
+      if (el) el.classList.add('selected');
+    }
+  }
+
+  return {
+    html: buildHtml(),
+    mount: function(root){
+      paint(root);
+      if (locked) return;
+      $$('.match-item', root).forEach(el => {
+        el.addEventListener('click', () => {
+          if (locked) return;
+          const side = el.dataset.side;
+          const id = el.dataset.id;
+          if (side === 'left'){
+            if (pairs[id]){ delete pairs[id]; selected = null; paint(root); refreshCheckState(); return; }
+            selected = (selected === id) ? null : id;
+            paint(root);
+          } else {
+            const owner = Object.keys(pairs).find(k => pairs[k] === id);
+            if (owner){ delete pairs[owner]; paint(root); refreshCheckState(); return; }
+            if (selected){
+              pairs[selected] = id;
+              selected = null;
+              paint(root);
+              app.answers[key] = Object.assign({}, pairs);
+              refreshCheckState();
+            }
+          }
+        });
+      });
+    },
+    canCheck: () => Object.keys(pairs).length === leftItems.length,
+    check: function(){
+      locked = true;
+      let correct = 0;
+      leftItems.forEach(l => {
+        const rId = pairs[l.id];
+        const right = rightItems.find(r => r.id === rId);
+        if (right && right.correct === l.id) correct++;
+      });
+      const earned = task.max * (correct / leftItems.length);
+      return { earned, text: 'Верных пар: ' + correct + ' из ' + leftItems.length + '.' };
+    }
+  };
+}
+
+/* ============ MC ============ */
+function buildMC(task){
+  const d = task.data;
+  const key = 'mc_' + task.id;
+  let user = app.answers[key] !== undefined ? app.answers[key] : null;
+  let locked = app.checked[task.id] || false;
+
+  function buildHtml(){
+    const opts = d.options.map((o, i) =>
+      '<div class="mc-option" data-o="' + i + '">' + o + '</div>'
+    ).join('');
+    return '<div class="task-card">' +
+      '<div class="task-num-badge">Задание ' + task.id + '</div>' +
+      '<h2 class="task-title">' + task.title + '</h2>' +
+      '<div class="mc-question">' + d.q + '</div>' +
+      '<div class="mc-options">' + opts + '</div>' +
+    '</div>';
+  }
+  function paint(root){
+    $$('.mc-option', root).forEach((el, i) => {
+      el.classList.toggle('selected', user === i);
+    });
+  }
+  return {
+    html: buildHtml(),
+    mount: function(root){
+      paint(root);
+      if (locked){
+        $$('.mc-option', root).forEach((el, i) => {
+          if (i === d.correct) el.classList.add('correct-mark');
+          else if (i === user) el.classList.add('wrong-mark');
+        });
+        return;
+      }
+      $$('.mc-option', root).forEach((el, i) => {
+        el.addEventListener('click', () => {
+          user = i;
+          app.answers[key] = i;
+          paint(root);
+          refreshCheckState();
+        });
+      });
+    },
+    canCheck: () => user !== null,
+    check: function(){
+      locked = true;
+      const ok = (user === d.correct);
+      const earned = ok ? task.max : 0;
+      const root = $('#taskStage');
+      $$('.mc-option', root).forEach((el, i) => {
+        if (i === d.correct) el.classList.add('correct-mark');
+        else if (i === user) el.classList.add('wrong-mark');
+      });
+      return { earned, text: ok ? '✅ Правильно!' : '❌ Правильный ответ: «' + d.options[d.correct] + '».' };
+    }
+  };
+}
+
+/* ============ SORT ============ */
+const SORT_ZONES_DEF = [
+  { id:'labeled',   title:'🏷️ Размеченные данные (с метками)' },
+  { id:'unlabeled', title:'📦 Неразмеченные данные (без меток)' }
+];
+function buildSort(task){
+  const d = task.data;
+  const key = 'sort_' + task.id;
+  let placement = app.answers[key] ? Object.assign({}, app.answers[key]) : {};
+  let selected = null;
+  let dragged = null;
+  let locked = app.checked[task.id] || false;
+  let rootEl = null;
+
+  function buildHtml(){
+    const zones = SORT_ZONES_DEF.map(z =>
+      '<div class="sort-zone" data-dropzone="' + z.id + '">' +
+        '<h4>' + z.title + '</h4>' +
+        '<div class="zone-items" data-zone="' + z.id + '"></div>' +
+      '</div>'
+    ).join('');
+    return '<div class="task-card">' +
+      '<div class="task-num-badge">Задание ' + task.id + '</div>' +
+      '<h2 class="task-title">' + task.title + '</h2>' +
+      '<p class="task-desc">Перетащи каждый объект в нужную категорию (или нажми на объект, затем на категорию).</p>' +
+      '<div class="sort-zones">' + zones + '</div>' +
+      '<div class="pool-block">' +
+        '<div class="pool-title">Объекты для сортировки</div>' +
+        '<div class="sort-pool" data-dropzone="pool"></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function makeItem(it, idx){
+    const el = document.createElement('div');
+    el.className = 'sort-item';
+    el.textContent = it.text;
+    el.dataset.idx = idx;
+    el.draggable = !locked;
+    if (selected === idx) el.classList.add('selected');
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      if (locked) return;
+      selected = (selected === idx) ? null : idx;
+      paint();
+    });
+    el.addEventListener('dragstart', e => {
+      if (locked){ e.preventDefault(); return; }
+      dragged = idx;
+      el.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', String(idx));
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    return el;
+  }
+
+  function paint(){
+    $$('.zone-items', rootEl).forEach(z => z.innerHTML = '');
+    const pool = $('.sort-pool', rootEl);
+    pool.innerHTML = '';
+    d.items.forEach((it, i) => {
+      const el = makeItem(it, i);
+      const zone = placement[i];
+      if (zone){
+        const target = rootEl.querySelector('.zone-items[data-zone="' + zone + '"]');
+        if (target) target.appendChild(el); else pool.appendChild(el);
+      } else pool.appendChild(el);
+    });
+  }
+
+  function place(idx, zone){
+    if (zone === 'pool') delete placement[idx];
+    else placement[idx] = zone;
+    selected = null;
+    app.answers[key] = Object.assign({}, placement);
+    paint();
+    refreshCheckState();
+  }
+
+  return {
+    html: buildHtml(),
+    mount: function(root){
+      rootEl = root;
+      paint();
+      $$('[data-dropzone]', root).forEach(zoneEl => {
+        zoneEl.addEventListener('dragover', e => { e.preventDefault(); zoneEl.classList.add('over'); });
+        zoneEl.addEventListener('dragleave', () => zoneEl.classList.remove('over'));
+        zoneEl.addEventListener('drop', e => {
+          e.preventDefault();
+          zoneEl.classList.remove('over');
+          if (locked) return;
+          const raw = e.dataTransfer.getData('text/plain');
+          const idx = raw !== '' ? Number(raw) : dragged;
+          if (idx === null || isNaN(idx)) return;
+          place(idx, zoneEl.dataset.dropzone);
+        });
+        zoneEl.addEventListener('click', () => {
+          if (locked || selected === null) return;
+          place(selected, zoneEl.dataset.dropzone);
+        });
+      });
+      if (locked){
+        $$('.sort-item', root).forEach(el => el.draggable = false);
+      }
+    },
+    canCheck: () => Object.keys(placement).length === d.items.length,
+    check: function(){
+      locked = true;
+      let correct = 0;
+      d.items.forEach((it, i) => {
+        const ok = placement[i] === it.cat;
+        if (ok) correct++;
+        const el = rootEl.querySelector('.sort-item[data-idx="' + i + '"]');
+        if (el) el.classList.add(ok ? 'correct-mark' : 'wrong-mark');
+      });
+      const earned = task.max * (correct / d.items.length);
+      return { earned, text: 'Верно разложено: ' + correct + ' из ' + d.items.length + '.' };
+    }
+  };
+}
+
+/* ============ DATASET ============ */
+function buildDataset(task){
+  const d = task.data;
+  const key = 'ds_' + task.id;
+  let selected = new Set(app.answers[key] || []);
+  let locked = app.checked[task.id] || false;
+  let rootEl = null;
+
+  function buildHtml(){
+    const cards = d.items.map((it, i) =>
+      '<div class="ds-card" data-i="' + i + '">' + it.svg + '</div>'
+    ).join('');
+    return '<div class="task-card">' +
+      '<div class="task-num-badge">Задание ' + task.id + '</div>' +
+      '<h2 class="task-title">' + task.title + '</h2>' +
+      '<p class="task-desc">' + d.task + ' Нажми на лишний объект — появится красный крестик.</p>' +
+      '<div class="ds-grid">' + cards + '</div>' +
+    '</div>';
+  }
+
+  function paint(){
+    $$('.ds-card', rootEl).forEach(el => {
+      el.classList.toggle('selected', selected.has(Number(el.dataset.i)));
+    });
+  }
+
+  return {
+    html: buildHtml(),
+    mount: function(root){
+      rootEl = root;
+      paint();
+      if (locked){
+        d.items.forEach((it, i) => {
+          const el = root.querySelector('.ds-card[data-i="' + i + '"]');
+          if (!el) return;
+          if (it.bad && selected.has(i)) el.classList.add('correct-mark');
+          else if (it.bad && !selected.has(i)) el.classList.add('wrong-mark');
+          else if (!it.bad && selected.has(i)) el.classList.add('wrong-mark');
+        });
+        return;
+      }
+      $$('.ds-card', root).forEach(el => {
+        el.addEventListener('click', () => {
+          const i = Number(el.dataset.i);
+          if (selected.has(i)) selected.delete(i); else selected.add(i);
+          app.answers[key] = Array.from(selected);
+          paint();
+        });
+      });
+    },
+    canCheck: () => true,
+    check: function(){
+      locked = true;
+      let correct = true;
+      d.items.forEach((it, i) => {
+        const sel = selected.has(i);
+        if (sel !== it.bad) correct = false;
+        const el = rootEl.querySelector('.ds-card[data-i="' + i + '"]');
+        if (!el) return;
+        el.classList.remove('selected');
+        if (it.bad && sel) el.classList.add('correct-mark');
+        else if (it.bad && !sel) el.classList.add('wrong-mark');
+        else if (!it.bad && sel) el.classList.add('wrong-mark');
+      });
+      const earned = correct ? task.max : 0;
+      return { earned, text: correct ? '✅ Все лишние объекты найдены!' : '❌ Нужно было отметить только «чужие» объекты.' };
+    }
+  };
+}
+
+/* ============ CLOZE ============ */
+function buildCloze(task){
+  const d = task.data;
+  const key = 'cloze_' + task.id;
+  let filled = app.answers[key] ? Object.assign({}, app.answers[key]) : {};
+  let selectedWord = null;
+  let draggedWord = null;
+  let locked = app.checked[task.id] || false;
+  let rootEl = null;
+
+  const allWords = shuffle(d.words.slice());
+
+  function buildHtml(){
+    return '<div class="task-card">' +
+      '<div class="task-num-badge">Задание ' + task.id + '</div>' +
+      '<h2 class="task-title">' + task.title + '</h2>' +
+      '<p class="task-desc">Перетащи слова в пропуски (или выбери слово и нажми на пропуск).</p>' +
+      '<div class="cloze" id="clozeText"></div>' +
+      '<div class="words" id="clozeWords"></div>' +
+    '</div>';
+  }
+
+  function paint(){
+    const textEl = $('#clozeText', rootEl);
+    textEl.innerHTML = d.parts.map(p => {
+      if (p.t !== undefined) return p.t;
+      const w = filled[p.gap];
+      return '<span class="blank' + (w ? ' filled' : '') + '" data-gap="' + p.gap + '">' + (w || '&nbsp;') + '</span>';
+    }).join('');
+    const usedWords = Object.keys(filled).map(k => filled[k]);
+    const wordsEl = $('#clozeWords', rootEl);
+    wordsEl.innerHTML = allWords.map(w => {
+      const used = usedWords.indexOf(w) !== -1;
+      return '<span class="word' + (used ? ' used' : '') + (selectedWord === w ? ' selected' : '') +
+             '" data-word="' + w + '" draggable="' + (!used && !locked) + '">' + w + '</span>';
+    }).join('');
+    bind();
+  }
+
+  function setWord(gap, word){
+    Object.keys(filled).forEach(k => { if (filled[k] === word) delete filled[k]; });
+    filled[gap] = word;
+    selectedWord = null;
+    app.answers[key] = Object.assign({}, filled);
+    paint();
+    refreshCheckState();
+  }
+
+  function bind(){
+    $$('.word', rootEl).forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        if (locked || el.classList.contains('used')) return;
+        selectedWord = (selectedWord === el.dataset.word) ? null : el.dataset.word;
+        paint();
+      });
+      el.addEventListener('dragstart', e => {
+        if (locked || el.classList.contains('used')){ e.preventDefault(); return; }
+        draggedWord = el.dataset.word;
+        el.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', el.dataset.word);
+      });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    });
+    $$('.blank', rootEl).forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        if (locked) return;
+        const g = el.dataset.gap;
+        if (filled[g]){ delete filled[g]; app.answers[key] = Object.assign({}, filled); paint(); refreshCheckState(); }
+        else if (selectedWord){ setWord(g, selectedWord); }
+      });
+      el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); });
+      el.addEventListener('dragleave', () => el.classList.remove('over'));
+      el.addEventListener('drop', e => {
+        e.preventDefault();
+        el.classList.remove('over');
+        if (locked) return;
+        const w = e.dataTransfer.getData('text/plain') || draggedWord;
+        if (!w) return;
+        setWord(el.dataset.gap, w);
+      });
+    });
+  }
+
+  return {
+    html: buildHtml(),
+    mount: function(root){ rootEl = root; paint(); },
+    canCheck: () => d.parts.filter(p => p.gap).every(p => filled[p.gap]),
+    check: function(){
+      locked = true;
+      let correct = 0;
+      d.parts.forEach(p => {
+        if (!p.gap) return;
+        const ok = filled[p.gap] === p.answer;
+        if (ok) correct++;
+        const el = rootEl.querySelector('.blank[data-gap="' + p.gap + '"]');
+        if (el){
+          el.classList.remove('filled');
+          el.classList.add(ok ? 'correct-mark' : 'wrong-mark');
+        }
+      });
+      const total = d.parts.filter(p => p.gap).length;
+      const earned = task.max * (correct / total);
+      return { earned, text: 'Правильно заполнено: ' + correct + ' из ' + total + ' пропусков.' };
+    }
+  };
+}
+
+function buildTask(task){
+  if (task.type === 'tf')      return buildTF(task);
+  if (task.type === 'match')   return buildMatch(task);
+  if (task.type === 'mc')      return buildMC(task);
+  if (task.type === 'sort')    return buildSort(task);
+  if (task.type === 'dataset') return buildDataset(task);
+  if (task.type === 'cloze')   return buildCloze(task);
+}
+
+/* ============ АВТОРИЗАЦИЯ ============ */
+const nameInput = $('#nameInput');
+const startBtn  = $('#startBtn');
+const nameHint  = $('#nameHint');
+
+nameInput.addEventListener('input', () => {
+  const v = nameInput.value.trim();
+  startBtn.disabled = v.length === 0;
+  nameHint.textContent = v.length === 0
+    ? 'Поле подсвечено зелёным — введи имя, чтобы начать'
+    : 'Отлично! Можно начинать.';
+});
+nameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !startBtn.disabled) startBtn.click();
+});
+startBtn.addEventListener('click', () => {
+  app.name = nameInput.value.trim();
+  app.step = 0;
+  app.scores = {};
+  app.answers = {};
+  app.checked = {};
+  showScreen('screen-task');
+  renderStep();
+});
+
+function showScreen(id){
+  $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+/* ============ ОТРИСОВКА ============ */
+const taskStage   = $('#taskStage');
+const checkBtn    = $('#checkBtn');
+const nextBtn     = $('#nextBtn');
+const prevBtn     = $('#prevBtn');
+const stagePill   = $('#stagePill');
+const taskCounter = $('#taskCounter');
+const taskProgress= $('#taskProgress');
+const taskNav     = $('#taskNav');
+
+let currentObj = null;
+
+function refreshCheckState(){
+  const task = TASKS[app.step];
+  if (!currentObj || app.checked[task.id]){
+    checkBtn.disabled = true;
+    return;
+  }
+  checkBtn.disabled = !currentObj.canCheck();
+}
+
+function updateNav(){
+  let html = '<span class="task-nav-label">Задания:</span>';
+  TASKS.forEach((t, i) => {
+    const done = !!app.checked[t.id];
+    const isCurrent = (i === app.step);
+    const cls = 'task-nav-btn'
+      + (isCurrent ? ' current' : '')
+      + (done ? ' done' : '')
+      + (t.stage === 2 ? ' stage2' : '');
+    html += '<button type="button" class="' + cls + '" data-step="' + i + '" title="Задание ' + t.id + '">' + t.id + '</button>';
+  });
+  taskNav.innerHTML = html;
+  $$('.task-nav-btn', taskNav).forEach(btn => {
+    btn.addEventListener('click', () => {
+      app.step = Number(btn.dataset.step);
+      renderStep();
+    });
+  });
+}
+
+function updateHeader(){
+  const t = TASKS[app.step];
+  stagePill.textContent = (t.stage === 1 ? 'Этап 1 · базовый' : 'Этап 2 · продвинутый');
+  stagePill.className = 'pill' + (t.stage === 2 ? ' b' : '');
+  taskCounter.textContent = 'Задание ' + t.id + ' из ' + TASKS.length;
+  taskProgress.style.width = ((app.step + 1) / TASKS.length * 100) + '%';
+}
+
+function renderStep(){
+  const task = TASKS[app.step];
+  taskStage.scrollTop = 0;
+  updateNav();
+  updateHeader();
+
+  currentObj = buildTask(task);
+  taskStage.innerHTML = currentObj.html + '<div class="feedback" id="feedback"></div>';
+  currentObj.mount(taskStage);
+
+  const isChecked = !!app.checked[task.id];
+
+  if (isChecked){
+    const fb = $('#feedback');
+    if (fb){
+      const earned = app.scores[task.id] || 0;
+      const max = task.max;
+      const cls = earned >= max - 0.001 ? 'good' : (earned > 0 ? 'part' : 'bad');
+      fb.className = 'feedback show ' + cls;
+      fb.innerHTML = '<b>' + fmt(earned) + ' из ' + fmt(max) + ' балла.</b> Задание проверено.';
+    }
+    checkBtn.disabled = true;
+    nextBtn.disabled = false;  // можно идти дальше
+  } else {
+    checkBtn.disabled = false;
+    refreshCheckState();
+    nextBtn.disabled = true;   // пока не ответил — «Далее» заблокировано
+  }
+
+  prevBtn.disabled = (app.step === 0);
+  nextBtn.textContent = (app.step === TASKS.length - 1) ? 'Показать результат →' : 'Далее →';
+}
+
+/* ============ КНОПКИ ============ */
+checkBtn.addEventListener('click', () => {
+  const task = TASKS[app.step];
+  if (!currentObj || app.checked[task.id]) return;
+  const res = currentObj.check();
+  app.scores[task.id] = res.earned;
+  app.checked[task.id] = true;
+  checkBtn.disabled = true;
+  nextBtn.disabled = false;  // разблокируем «Далее» после проверки
+  updateNav();
+
+  const fb = $('#feedback');
+  if (fb){
+    const cls = res.earned >= task.max - 0.001 ? 'good' : (res.earned > 0 ? 'part' : 'bad');
+    fb.className = 'feedback show ' + cls;
+    fb.innerHTML = '<b>' + fmt(res.earned) + ' из ' + fmt(task.max) + ' балла.</b> ' + res.text;
+  }
+});
+
+nextBtn.addEventListener('click', () => {
+  if (nextBtn.disabled) return;
+  if (app.step < TASKS.length - 1){
+    app.step++;
+    renderStep();
+  } else {
+    showResults();
+  }
+});
+
+prevBtn.addEventListener('click', () => {
+  if (app.step > 0){ app.step--; renderStep(); }
+});
+
+/* ============ ИТОГ ============ */
+function gradeFor(score){
+  if (score >= 9) return {
+    badge:'🏆', cls:'excellent', label:'Высокий уровень (9–10 баллов)',
+    desc:'Различает данные, информацию и знания; верно объясняет роль обучающей выборки; успешно анализирует датасеты и находит ошибочные данные для моделей ИИ.'
+  };
+  if (score >= 6) return {
+    badge:'👍', cls:'good', label:'Средний уровень (6–8 баллов)',
+    desc:'Различает понятия «данные» и «информация», знает базовое назначение обучающих данных, успешно выполнил базовый этап заданий.'
+  };
+  return {
+    badge:'📘', cls:'low', label:'Низкий уровень (1–5 баллов)',
+    desc:'Допускает ошибки в базовых понятиях, требуется повторение темы «Данные и информация».'
+  };
+}
+
+function showResults(){
+  let total = 0, stage1 = 0, stage2 = 0;
+  TASKS.forEach(t => {
+    const s = app.scores[t.id] || 0;
+    total += s;
+    if (t.stage === 1) stage1 += s; else stage2 += s;
+  });
+  total = Math.min(10, total);
+  stage1 = Math.min(8, stage1);
+  stage2 = Math.min(2, stage2);
+
+  const g = gradeFor(total);
+  $('#resultBadge').textContent = g.badge;
+  $('#resultName').innerHTML = 'Имя ученика: <b>' + escapeHtml(app.name || 'Ученик') + '</b>';
+  $('#resultScore').textContent = fmt(total);
+
+  const gradeEl = $('#resultGrade');
+  gradeEl.textContent = g.label;
+  gradeEl.className = 'result-grade ' + g.cls;
+  $('#resultDesc').textContent = g.desc;
+
+  const tfDone = TASKS.filter(t => t.type === 'tf');
+  const mtDone = TASKS.filter(t => t.type === 'match');
+  const mcDone = TASKS.filter(t => t.type === 'mc');
+  const stDone = TASKS.filter(t => t.type === 'sort');
+  const dsDone = TASKS.filter(t => t.type === 'dataset');
+  const czDone = TASKS.filter(t => t.type === 'cloze');
+  const sum = arr => arr.reduce((s, t) => s + (app.scores[t.id] || 0), 0);
+
+  $('#resultBreakdown').innerHTML =
+    '<div class="bd-row"><span><b>Этап 1 · базовый (задания 1–20)</b></span><b>' + fmt(stage1) + ' / 8</b></div>' +
+    '<div class="bd-row"><span>· Верно/Неверно (8 заданий)</span><b>' + fmt(sum(tfDone)) + ' / 3,2</b></div>' +
+    '<div class="bd-row"><span>· Соответствия (6 заданий)</span><b>' + fmt(sum(mtDone)) + ' / 2,4</b></div>' +
+    '<div class="bd-row"><span>· Один из многих (6 заданий)</span><b>' + fmt(sum(mcDone)) + ' / 2,4</b></div>' +
+    '<div class="bd-row" style="margin-top:6px"><span><b>Этап 2 · продвинутый (задания 21–30)</b></span><b>' + fmt(stage2) + ' / 2</b></div>' +
+    '<div class="bd-row"><span>· Сортировка (4 задания)</span><b>' + fmt(sum(stDone)) + ' / 0,8</b></div>' +
+    '<div class="bd-row"><span>· Поиск ошибок в датасете (3 задания)</span><b>' + fmt(sum(dsDone)) + ' / 0,6</b></div>' +
+    '<div class="bd-row"><span>· Заполнение пропусков (3 задания)</span><b>' + fmt(sum(czDone)) + ' / 0,6</b></div>' +
+    '<div class="bd-row" style="border-top:1px solid var(--line); margin-top:8px; padding-top:10px; font-size:1.1rem"><span><b>Итог (не более 10 баллов)</b></span><b>' + fmt(total) + ' / 10</b></div>';
+
+  showScreen('screen-result');
+}
+
+$('#retryBtn').addEventListener('click', () => {
+  app.step = 0;
+  app.scores = {};
+  app.answers = {};
+  app.checked = {};
+  showScreen('screen-task');
+  renderStep();
+});
+
+})();
+</script>
+</body>
+</html>
